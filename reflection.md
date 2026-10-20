@@ -48,13 +48,26 @@ The UML draft was updated to match.
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+I used Claude Code for the whole workflow: identifying the three core user actions, drafting the UML, generating the class skeleton, implementing the methods, writing the demo script and tests, and drafting documentation. The most helpful prompts were specific and sequential, with one artifact each: "generate UML with these four classes", then "create the skeleton from the UML", then "implement the classes". Each step built on a file the AI had already produced, which made the results easy to check against the previous step.
+
+What the AI suggested, and what happened to it:
+
+- **Accepted:** the four-class structure, with dataclasses for `Task`, `Pet` and `Owner` and a plain class for `Scheduler`. I accepted it because the data classes only hold data and all the scheduling behavior sits in one place.
+- **Accepted:** a greedy scheduling approach: sort by priority, then keep tasks while they fit in the time budget.
+- **Not adopted:** the AI left `priority` as a plain string instead of an enum. I kept that for now to keep the design simple. The cost is that a typo like `"hgih"` silently sorts last.
+- **Not adopted:** the AI treats `preferred_time` only as a tie-breaker, not as a fixed slot on a clock, so the plan is an ordered list rather than a timetable.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+I did not accept the first skeleton as-is. When I reviewed it against the UML, I saw two gaps that would have made the methods impossible to implement properly. `explain_plan()` had no stored plan to explain, and a `Task` could not say which pet it belonged to once tasks from all pets were merged. I added `Scheduler.plan` and `Task.pet_name`, then updated the UML to match (see 1b).
+
+To verify the AI's work I did not rely on its description of what the code does:
+
+- I ran `main.py` with two pets and five tasks, including one already completed and one too long to fit. I checked that the output order and the "Skipped" line matched what I expected from the rules.
+- I wrote tests for task completion and for adding a task to a pet, and ran them with `python -m pytest`. Both pass.
+- I checked that the UML, the skeleton and the implementation agree with each other.
+
+The tests are still thin. They cover simple state changes, not the sorting or time-fitting logic, so the scheduler's behavior is only verified by the demo run so far.
 
 ---
 

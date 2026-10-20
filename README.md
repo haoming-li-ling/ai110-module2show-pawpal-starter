@@ -71,6 +71,19 @@ Jordan has 90 minutes today; the plan uses 65.
 Skipped: Brush coat (Mochi) - 40 min did not fit in the remaining time.
 ```
 
+## 🛠️ Implementation Summary
+
+The core logic lives in `pawpal_system.py` and is made of four classes:
+
+- **`Task`** (dataclass) is one care activity: title, duration, priority (`high`/`medium`/`low`), an optional preferred time, the name of its pet, and a completed flag.
+- **`Pet`** (dataclass) owns a list of tasks. Adding a task stamps it with the pet's name.
+- **`Owner`** (dataclass) has a name, a daily time budget in minutes, and a list of pets. `get_all_tasks()` flattens every pet's tasks into one list.
+- **`Scheduler`** takes an `Owner` and produces the plan.
+
+How they work together: an `Owner` holds `Pet`s, and each `Pet` holds `Task`s. When `Scheduler.generate_daily_plan()` runs, it collects the owner's pending tasks, sorts them by priority (ties go to the earlier preferred time, then the shorter task), and keeps tasks in that order while they fit in the owner's available minutes. A task that doesn't fit is skipped so smaller ones can still be scheduled. The result is stored in `scheduler.plan`, and `explain_plan()` turns it into text that lists each scheduled task and each skipped one.
+
+`main.py` is a command-line demo of this flow, and `tests/test_pawpal.py` holds the tests (run with `python -m pytest`).
+
 ## 🧪 Testing PawPal+
 
 ```bash
