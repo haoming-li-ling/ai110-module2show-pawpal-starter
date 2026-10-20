@@ -44,14 +44,31 @@ pip install -r requirements.txt
 
 ## 🖥️ Sample Output
 
-Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
+Running `python main.py` generates a plan for a sample owner with two pets:
 
 ```
-# e.g.:
-# Daily plan for Biscuit (Golden Retriever):
-#   08:00 — Morning walk (30 min) [priority: high]
-#   09:00 — Feeding (10 min) [priority: high]
-#   ...
+================================================================
+                   TODAY'S SCHEDULE - Jordan
+================================================================
+Pets: Mochi (dog), Kiki (cat)
+Time available: 90 min
+----------------------------------------------------------------
+#  Preferred  Task                    Pet      Min  Priority
+----------------------------------------------------------------
+1  07:30      Morning walk            Mochi     30  high
+2  08:00      Breakfast               Kiki      10  high
+3  12:00      Give medication         Kiki       5  high
+4  17:00      Play with feather toy   Kiki      20  medium
+----------------------------------------------------------------
+Total: 65 of 90 min scheduled
+
+Why this plan:
+Jordan has 90 minutes today; the plan uses 65.
+1. Morning walk (Mochi) - 30 min, high priority, preferred 07:30
+2. Breakfast (Kiki) - 10 min, high priority, preferred 08:00
+3. Give medication (Kiki) - 5 min, high priority, preferred 12:00
+4. Play with feather toy (Kiki) - 20 min, medium priority, preferred 17:00
+Skipped: Brush coat (Mochi) - 40 min did not fit in the remaining time.
 ```
 
 ## 🧪 Testing PawPal+
