@@ -8,6 +8,7 @@ class Task:
     duration_minutes: int
     priority: str
     preferred_time: str = ""
+    pet_name: str = ""
     completed: bool = False
 
     def mark_complete(self) -> None:
@@ -49,6 +50,7 @@ class Owner:
 class Scheduler:
     def __init__(self, owner: Owner) -> None:
         self.owner = owner
+        self.plan: List[Task] = []
 
     def generate_daily_plan(self) -> List[Task]:
         pass

@@ -22,12 +22,14 @@ classDiagram
         +int duration_minutes
         +String priority
         +String preferred_time
+        +String pet_name
         +bool completed
         +mark_complete() void
     }
 
     class Scheduler {
         +Owner owner
+        +List~Task~ plan
         +generate_daily_plan() List~Task~
         +sort_by_priority(tasks) List~Task~
         +fits_in_time(tasks) List~Task~

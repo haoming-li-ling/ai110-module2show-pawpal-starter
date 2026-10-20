@@ -10,13 +10,23 @@ Three core actions a user should be able to perform:
 2. **Schedule a care task.** The user adds a task for a pet, such as a walk, feeding, or medication. Each task has a duration and a priority, and can have a preferred time.
 3. **See today's tasks.** The user generates and views a daily plan. The plan orders the tasks by priority and fits them into the time available. It also explains why each task was placed where it was.
 
-- Briefly describe your initial UML design.
-- What classes did you include, and what responsibilities did you assign to each?
+My initial UML has four classes:
+
+- **Owner:** holds the owner's name, the minutes available per day, and their list of pets. It adds and removes pets and can gather every task across all pets.
+- **Pet:** holds the pet's name, species, and its own list of tasks. It adds and removes tasks and returns the ones not yet completed.
+- **Task:** holds one care activity: title, duration, priority, preferred time, and a completed flag. It can mark itself complete.
+- **Scheduler:** takes an Owner and builds the daily plan. It sorts tasks by priority, keeps only the ones that fit in the owner's available time, and explains why the plan looks the way it does.
+
+An Owner has many Pets, and a Pet has many Tasks. The Scheduler depends on one Owner. I kept data in Owner, Pet and Task, which are dataclasses. I kept all scheduling decisions in the Scheduler.
 
 **b. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
+Yes. While reviewing the class skeleton against the UML, I made two changes:
+
+- **Added `plan` to Scheduler.** `explain_plan()` had nothing to explain, because `generate_daily_plan()` only returned a list and kept no state. The Scheduler now stores the latest plan in `self.plan`.
+- **Added `pet_name` to Task.** Once tasks from all pets are merged into one plan, a Task had no way to say which pet it belonged to. The plan couldn't show "walk Mochi", for example. `pet_name` fixes that without giving Task a reference back to Pet.
+
+The UML draft was updated to match.
 
 ---
 
