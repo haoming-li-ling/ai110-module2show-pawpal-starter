@@ -256,6 +256,38 @@ class Scheduler:
                 )
         return warnings
 
+    def find_next_available_slot(
+        self,
+        duration_minutes: int,
+        earliest: str = "07:00",
+        latest: str = "21:00",
+        tasks: Optional[List[Task]] = None,
+    ) -> Optional[str]:
+        """Return the first HH:MM where a task of this length fits without overlap.
+
+        Looks between `earliest` and `latest` for a gap in the timed tasks
+        (the current plan by default). Tasks without a valid preferred time
+        take up no space. Returns None if no gap is long enough.
+        """
+        start, end = _minutes(earliest), _minutes(latest)
+        if start is None or end is None or duration_minutes <= 0:
+            return None
+        busy = []
+        for t in self.plan if tasks is None else tasks:
+            t_start = _minutes(t.preferred_time) if t.preferred_time else None
+            if t_start is not None:
+                busy.append((t_start, t_start + t.duration_minutes))
+        busy.sort()
+        cursor = start
+        # Sweep forward: if the candidate window hits a busy block, jump past it.
+        for b_start, b_end in busy:
+            if b_start - cursor >= duration_minutes:
+                break
+            cursor = max(cursor, b_end)
+        if cursor + duration_minutes > end:
+            return None
+        return f"{cursor // 60:02d}:{cursor % 60:02d}"
+
     def fits_in_time(self, tasks: List[Task]) -> List[Task]:
         """Return the tasks, in order, that fit in the owner's available minutes."""
         # Greedy in the given order; a task that doesn't fit is skipped so

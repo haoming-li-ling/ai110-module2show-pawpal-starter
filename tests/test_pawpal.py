@@ -278,3 +278,41 @@ def test_plan_for_owner_with_no_pets_is_empty():
     s = Scheduler(Owner("Sam", 60))
     assert s.generate_daily_plan() == []
     assert s.explain_plan() == "No tasks scheduled."
+
+
+def _timed_scheduler(*specs):
+    """Scheduler whose plan holds (preferred_time, minutes) tasks."""
+    owner = Owner(name="Jordan", available_minutes=2000)
+    pet = Pet(name="Mochi", species="dog")
+    owner.add_pet(pet)
+    for i, (when, minutes) in enumerate(specs):
+        pet.add_task(Task(f"t{i}", minutes, "high", preferred_time=when))
+    scheduler = Scheduler(owner)
+    scheduler.generate_daily_plan()
+    return scheduler
+
+
+def test_next_slot_is_earliest_when_nothing_is_scheduled():
+    assert _timed_scheduler().find_next_available_slot(30) == "07:00"
+
+
+def test_next_slot_skips_past_a_busy_block():
+    scheduler = _timed_scheduler(("07:00", 30), ("07:30", 30))
+    assert scheduler.find_next_available_slot(15) == "08:00"
+
+
+def test_next_slot_uses_a_gap_between_tasks():
+    scheduler = _timed_scheduler(("07:00", 60), ("09:00", 30))
+    assert scheduler.find_next_available_slot(45) == "08:00"
+    assert scheduler.find_next_available_slot(90) == "09:30"
+
+
+def test_next_slot_returns_none_when_day_is_full():
+    scheduler = _timed_scheduler(("07:00", 840))
+    assert scheduler.find_next_available_slot(15) is None
+
+
+def test_next_slot_rejects_bad_input():
+    scheduler = _timed_scheduler()
+    assert scheduler.find_next_available_slot(0) is None
+    assert scheduler.find_next_available_slot(10, earliest="nope") is None

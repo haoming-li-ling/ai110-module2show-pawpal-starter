@@ -10,6 +10,7 @@ PawPal+ is a Streamlit app that helps a busy pet owner plan daily care for their
 - **Filtering:** view tasks for one pet, only pending or only completed tasks, or both filters together.
 - **Conflict warnings:** tasks with a preferred time are compared by start and end, and overlapping windows (including across different pets) produce a warning. Back-to-back tasks are not conflicts, and nothing is moved or removed automatically.
 - **Daily and weekly recurrence:** completing a recurring task marks it done and creates the next occurrence 1 or 7 days after its due date. Future-dated tasks stay out of today's plan until due, and completing a task twice never creates duplicates.
+- **Next available slot:** `find_next_available_slot()` finds the earliest time of day (07:00 to 21:00 by default) where a task of a given length fits without overlapping the timed tasks in the plan.
 - **Plan explanation:** `explain_plan()` lists every scheduled task and every task that was skipped for lack of time.
 - **Persistence:** the owner, pets and tasks are saved to `pawpal_data.json` and reloaded on startup.
 
@@ -111,6 +112,7 @@ tests/test_pawpal.py::test_plan_for_owner_with_no_pets_is_empty PASSED   [100%]
 | Filtering | `Scheduler.filter_tasks(pet_name, completed)` | Limit to one pet, a status, or both; `None` means no filter |
 | Time budget | `Scheduler.fits_in_time()` | Keeps tasks in order until the owner's minutes run out; skips one that doesn't fit so smaller ones can still use the time |
 | Conflict detection | `Scheduler.detect_conflicts()` | Warns about overlapping preferred-time windows |
+| Next available slot | `Scheduler.find_next_available_slot(duration_minutes, earliest, latest)` | Sweeps the timed tasks in order and returns the first `HH:MM` gap that is long enough, or `None` |
 | Recurring tasks | `Task.mark_complete()`, `Pet.complete_task()`, `Scheduler.mark_task_complete()` | Completing a daily or weekly task creates the next occurrence |
 
 ### Sorting

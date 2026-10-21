@@ -272,6 +272,15 @@ if st.session_state.show_plan:
             st.warning("No task fits in the time available.")
             if skipped:
                 st.table(rows(skipped))
+        with st.expander("Find a free time slot"):
+            need = st.number_input(
+                "Minutes needed", min_value=1, max_value=240, value=30, key="slot_minutes"
+            )
+            slot = scheduler.find_next_available_slot(int(need))
+            if slot:
+                st.success(f"Next free {int(need)}-minute slot: {slot}")
+            else:
+                st.warning(f"No free {int(need)}-minute slot left today.")
         with st.expander("Why this plan?", expanded=True):
             st.text(scheduler.explain_plan())
 

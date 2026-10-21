@@ -60,6 +60,11 @@ def main() -> None:
     print("Why this plan:")
     print(scheduler.explain_plan())
 
+    print()
+    for minutes in (15, 45, 120):
+        slot = scheduler.find_next_available_slot(minutes)
+        print(f"Next free {minutes}-min slot: {slot or 'none today'}")
+
 
 if __name__ == "__main__":
     main()
