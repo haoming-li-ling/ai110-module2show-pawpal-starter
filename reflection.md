@@ -42,6 +42,28 @@ The UML draft was updated to match.
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
 
+The scheduler chooses tasks by priority and the owner's time budget, and only
+*warns* about time conflicts instead of resolving them. `generate_daily_plan`
+picks tasks greedily (high priority first) until the minutes run out. It treats
+`preferred_time` as a tiebreaker, not a fixed slot. `detect_conflicts` then
+checks the chosen tasks and reports any whose preferred windows overlap, such
+as a 07:30 walk (30 min) and a 07:45 breakfast. Both tasks stay in the plan.
+
+What this costs: the plan is not a real timeline. Two tasks can be scheduled
+for overlapping times, and the owner has to fix that by hand. A skipped task
+never triggers a conflict, and tasks without a preferred time are ignored.
+Greedy selection can also miss the best combination of tasks that fits in the
+time, though it never skips a high-priority task for a lower-priority one that
+would fit.
+
+Why it is reasonable: preferred times are wishes, not appointments. Silently
+moving or dropping a task to remove a clash could break something that matters,
+like medication, and the owner knows which task can give way. A warning keeps
+the owner in control. The algorithm stays simple and easy to explain in the
+"Why this plan?" text, and detection is cheap (sorting plus an early-exit
+scan). Automatic resolution, or searching for the best set of tasks that fits,
+would be harder to explain and test, and not worth it for a few tasks a day.
+
 ---
 
 ## 3. AI Collaboration

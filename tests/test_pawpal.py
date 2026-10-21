@@ -1,4 +1,4 @@
-from pawpal_system import Pet, Task
+from pawpal_system import Owner, Pet, Scheduler, Task
 
 
 def test_mark_complete_changes_status():
@@ -17,3 +17,137 @@ def test_add_task_increases_pet_task_count():
     pet.add_task(Task("Morning walk", 30, "high"))
 
     assert len(pet.tasks) == 1
+
+
+def test_owner_save_and_load_round_trip(tmp_path):
+    owner = Owner("Sam", 60)
+    pet = Pet("Mochi", "dog")
+    owner.add_pet(pet)
+    pet.add_task(Task("Walk", 30, "high", preferred_time="07:30"))
+    path = tmp_path / "data.json"
+
+    owner.save(path)
+    loaded = Owner.load(path)
+
+    assert loaded == owner
+    assert loaded.pets[0].tasks[0].pet_name == "Mochi"
+
+
+def test_rename_pet_updates_task_pet_names():
+    pet = Pet("Mochi", "dog")
+    pet.add_task(Task("Walk", 30, "high"))
+
+    pet.rename("Moji")
+
+    assert pet.tasks[0].pet_name == "Moji"
+
+
+def _owner_with_tasks():
+    owner = Owner("Sam", 120)
+    mochi, luna = Pet("Mochi", "dog"), Pet("Luna", "cat")
+    owner.add_pet(mochi)
+    owner.add_pet(luna)
+    mochi.add_task(Task("Walk", 30, "high", preferred_time="09:00"))
+    mochi.add_task(Task("Feed", 10, "low", preferred_time="08:00"))
+    luna.add_task(Task("Play", 20, "medium"))
+    return owner, mochi, luna
+
+
+def test_sort_by_time_puts_unset_last():
+    owner, _, _ = _owner_with_tasks()
+    ordered = Scheduler(owner).sort_by_time(owner.get_all_tasks())
+    assert [t.title for t in ordered] == ["Feed", "Walk", "Play"]
+
+
+def test_filter_by_pet_and_status():
+    owner, mochi, luna = _owner_with_tasks()
+    mochi.tasks[0].mark_complete()
+    s = Scheduler(owner)
+    assert [t.title for t in s.filter_tasks(pet_name="Luna")] == ["Play"]
+    assert [t.title for t in s.filter_tasks(completed=True)] == ["Walk"]
+    assert len(s.filter_tasks(pet_name="Mochi", completed=False)) == 1
+
+
+def test_daily_task_recurs_next_day():
+    pet = Pet("Mochi", "dog")
+    task = Task("Meds", 5, "high", recurrence="daily", due_date="2026-01-01")
+    pet.add_task(task)
+
+    nxt = pet.complete_task(task)
+
+    assert task.completed and nxt in pet.tasks
+    assert nxt.due_date == "2026-01-02" and not nxt.completed
+
+
+def test_weekly_task_recurs_in_seven_days():
+    task = Task("Bath", 20, "low", recurrence="weekly", due_date="2026-01-01")
+    assert task.mark_complete().due_date == "2026-01-08"
+
+
+def test_non_recurring_task_returns_none():
+    assert Task("Walk", 30, "high").mark_complete() is None
+
+
+def test_future_recurrence_is_left_out_of_plan():
+    owner = Owner("Sam", 60)
+    pet = Pet("Mochi", "dog")
+    owner.add_pet(pet)
+    task = Task("Meds", 5, "high", recurrence="daily")
+    pet.add_task(task)
+    pet.complete_task(task)
+
+    assert Scheduler(owner).generate_daily_plan() == []
+
+
+def test_detect_conflicts_flags_overlap_only():
+    owner = Owner("Sam", 120)
+    a, b = Pet("Mochi", "dog"), Pet("Luna", "cat")
+    owner.add_pet(a)
+    owner.add_pet(b)
+    a.add_task(Task("Walk", 30, "high", preferred_time="09:00"))
+    b.add_task(Task("Vet", 30, "high", preferred_time="09:15"))
+    b.add_task(Task("Feed", 10, "low", preferred_time="09:45"))
+    s = Scheduler(owner)
+    s.generate_daily_plan()
+
+    warnings = s.detect_conflicts()
+
+    assert len(warnings) == 1
+    assert "Walk" in warnings[0] and "Vet" in warnings[0]
+
+
+def test_scheduler_mark_task_complete_adds_next_occurrence():
+    owner = Owner("Sam", 60)
+    pet = Pet("Mochi", "dog")
+    owner.add_pet(pet)
+    task = Task("Meds", 5, "high", recurrence="weekly", due_date="2026-01-01")
+    pet.add_task(task)
+
+    nxt = Scheduler(owner).mark_task_complete(task)
+
+    assert len(pet.tasks) == 2
+    assert nxt.pet_name == "Mochi" and nxt.due_date == "2026-01-08"
+
+
+def test_completing_twice_does_not_duplicate():
+    owner = Owner("Sam", 60)
+    pet = Pet("Mochi", "dog")
+    owner.add_pet(pet)
+    task = Task("Meds", 5, "high", recurrence="daily")
+    pet.add_task(task)
+    s = Scheduler(owner)
+
+    s.mark_task_complete(task)
+    s.mark_task_complete(task)
+
+    assert len(pet.tasks) == 2
+
+
+def test_detect_conflicts_ignores_malformed_time():
+    owner = Owner("Sam", 60)
+    pet = Pet("Mochi", "dog")
+    owner.add_pet(pet)
+    pet.add_task(Task("Walk", 30, "high", preferred_time="bogus"))
+    pet.add_task(Task("Feed", 10, "low", preferred_time="09:00"))
+
+    assert Scheduler(owner).detect_conflicts(owner.get_all_tasks()) == []

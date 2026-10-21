@@ -102,14 +102,41 @@ Sample test output:
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
-
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Sorting by priority | `Scheduler.sort_by_priority()` | High before medium before low; ties go to the earlier preferred time, then the shorter task |
+| Sorting by time | `Scheduler.sort_by_time()` | Orders by preferred `HH:MM`; tasks with no time go last |
+| Filtering | `Scheduler.filter_tasks(pet_name, completed)` | Limit to one pet, a status, or both; `None` means no filter |
+| Time budget | `Scheduler.fits_in_time()` | Keeps tasks in order until the owner's minutes run out; skips one that doesn't fit so smaller ones can still use the time |
+| Conflict detection | `Scheduler.detect_conflicts()` | Warns about overlapping preferred-time windows |
+| Recurring tasks | `Task.mark_complete()`, `Pet.complete_task()`, `Scheduler.mark_task_complete()` | Completing a daily or weekly task creates the next occurrence |
+
+### Sorting
+`generate_daily_plan()` sorts pending tasks with `sort_by_priority()`. Use
+`sort_by_time()` for a clock-order view, such as the task list in the app.
+
+### Filtering
+`filter_tasks(pet_name="Kiki", completed=False)` returns Kiki's pending tasks.
+The app's "Show pet" and "Show status" controls use it. The planner also leaves
+out completed tasks and tasks whose `due_date` is in the future.
+
+### Conflict detection
+`detect_conflicts()` checks the current plan, or a list you pass in. It sorts
+tasks with a preferred time by start, then compares each task only with later
+ones until one starts after it ends (O(n log n) plus the overlaps found). A
+task that starts exactly when another ends is not a conflict. It returns
+warning strings, which the app shows as warnings. It never removes or moves a
+task. Tasks with no preferred time, or a malformed one, are ignored.
+
+### Recurring tasks
+A task has `recurrence` (`"daily"`, `"weekly"`, or empty) and an ISO
+`due_date`. `Task.mark_complete()` marks the task done and, if it recurs,
+returns a copy due 1 or 7 days after the old due date (or after today if it had
+none). `Scheduler.mark_task_complete()` finds the owning pet and adds that copy
+through `Pet.complete_task()`, so completing a recurring task automatically
+creates the next one. Completing an already-completed task does nothing, so it
+can't create duplicates. Call `Task.mark_complete()` directly and you get the
+new task back but it is not added to a pet.
 
 ## 📸 Demo Walkthrough
 
