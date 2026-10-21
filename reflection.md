@@ -91,6 +91,20 @@ To verify the AI's work I did not rely on its description of what the code does:
 
 The tests are still thin. They cover simple state changes, not the sorting or time-fitting logic, so the scheduler's behavior is only verified by the demo run so far.
 
+**c. AI strategy**
+
+*Most effective features.* Three things worked best for building the scheduler:
+
+- **Working from files the AI had already produced.** Generating the UML, then the skeleton from the UML, then the implementation from the skeleton meant every step could be checked against the one before it. That is how I caught the missing `plan` and `pet_name`.
+- **Having the AI run the code.** Running `main.py` and `pytest` and reading real output was more reliable than reading the AI's description of what the code should do. The same habit caught problems later, such as a README sample output that no longer matched what `main.py` printed.
+- **Applying one feature across several files at once.** When I added recurring tasks, sorting, filtering and conflict detection, the AI could update `pawpal_system.py`, `app.py`, `main.py`, the tests and the README together. I then reviewed the diff instead of typing each change myself.
+
+*A suggestion I modified.* After the first skeleton, `Task` had no way to say which pet it belonged to once all tasks were merged into one plan. The obvious fix was to give `Task` a reference back to its `Pet`. I rejected that and added a plain `pet_name` string, which `Pet.add_task()` and `Pet.rename()` keep in sync. A back-reference would have made `Pet` and `Task` depend on each other, complicated JSON saving and loading, and made `Task` harder to test on its own. I also kept `priority` as a plain string rather than an enum, to keep the design small, and accepted the tradeoff that a typo sorts last.
+
+*Separate chat sessions.* I kept each phase in its own session: design and UML, implementation, then the UI and documentation. Each session started with only the files that mattered, so it was not carrying earlier discussion that no longer applied, and an idea from one phase couldn't quietly overwrite a decision from another. When I came back to a phase, `reflection.md`, the UML and the commit history were enough to pick up where I left off. Splitting the work this way also gave me natural points to commit and to check that the code, the UML and the README still agreed.
+
+*Being the lead architect.* The AI can write a lot of working code quickly, so my job was deciding what the system should be and checking that it stayed that way. I set the boundaries (data in `Owner`, `Pet` and `Task`; decisions in `Scheduler`) and I decided that conflicts should produce warnings rather than silent changes to the plan. What I learned is that the AI's first answer is usually plausible but not always right for my design. It works best when I give small, specific requests, review every diff against the UML, and verify with tests and real output. The speed only helps if I stay the person who decides what gets kept.
+
 ---
 
 ## 4. Testing and Verification

@@ -1,86 +1,46 @@
 # PawPal+ (Module 2 Project)
 
-You are building **PawPal+**, a Streamlit app that helps a pet owner plan care tasks for their pet.
+PawPal+ is a Streamlit app that helps a busy pet owner plan daily care for their pets. It tracks tasks (walks, feeding, meds, grooming and so on), respects the time the owner has available, and produces a prioritized daily plan with an explanation of why it was chosen.
 
-## Scenario
+## ✨ Features
 
-A busy pet owner needs help staying consistent with pet care. They want an assistant that can:
-
-- Track pet care tasks (walks, feeding, meds, enrichment, grooming, etc.)
-- Consider constraints (time available, priority, owner preferences)
-- Produce a daily plan and explain why it chose that plan
-
-Your job is to design the system first (UML), then implement the logic in Python, then connect it to the Streamlit UI.
-
-## What you will build
-
-Your final app should:
-
-- Let a user enter basic owner + pet info
-- Let a user add/edit tasks (duration + priority at minimum)
-- Generate a daily schedule/plan based on constraints and priorities
-- Display the plan clearly (and ideally explain the reasoning)
-- Include tests for the most important scheduling behaviors
+- **Priority-based planning:** pending tasks are sorted high, then medium, then low. Ties go to the earlier preferred time, then the shorter task.
+- **Time-budget fitting:** tasks are taken in priority order until the owner's available minutes run out. A task that doesn't fit is skipped so smaller, lower-priority tasks can still use the leftover time.
+- **Sorting by time:** any task list can be ordered by preferred `HH:MM`, with tasks that have no preferred time placed last.
+- **Filtering:** view tasks for one pet, only pending or only completed tasks, or both filters together.
+- **Conflict warnings:** tasks with a preferred time are compared by start and end, and overlapping windows (including across different pets) produce a warning. Back-to-back tasks are not conflicts, and nothing is moved or removed automatically.
+- **Daily and weekly recurrence:** completing a recurring task marks it done and creates the next occurrence 1 or 7 days after its due date. Future-dated tasks stay out of today's plan until due, and completing a task twice never creates duplicates.
+- **Plan explanation:** `explain_plan()` lists every scheduled task and every task that was skipped for lack of time.
+- **Persistence:** the owner, pets and tasks are saved to `pawpal_data.json` and reloaded on startup.
 
 ## Getting started
-
-### Setup
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-```
 
-### Suggested workflow
-
-1. Read the scenario carefully and identify requirements and edge cases.
-2. Draft a UML diagram (classes, attributes, methods, relationships).
-3. Convert UML into Python class stubs (no logic yet).
-4. Implement scheduling logic in small increments.
-5. Add tests to verify key behaviors.
-6. Connect your logic to the Streamlit UI in `app.py`.
-7. Refine UML so it matches what you actually built.
-
-## 🖥️ Sample Output
-
-Running `python main.py` generates a plan for a sample owner with two pets:
-
-```
-================================================================
-                   TODAY'S SCHEDULE - Jordan
-================================================================
-Pets: Mochi (dog), Kiki (cat)
-Time available: 90 min
-----------------------------------------------------------------
-#  Preferred  Task                    Pet      Min  Priority
-----------------------------------------------------------------
-1  07:30      Morning walk            Mochi     30  high
-2  08:00      Breakfast               Kiki      10  high
-3  12:00      Give medication         Kiki       5  high
-4  17:00      Play with feather toy   Kiki      20  medium
-----------------------------------------------------------------
-Total: 65 of 90 min scheduled
-
-Why this plan:
-Jordan has 90 minutes today; the plan uses 65.
-1. Morning walk (Mochi) - 30 min, high priority, preferred 07:30
-2. Breakfast (Kiki) - 10 min, high priority, preferred 08:00
-3. Give medication (Kiki) - 5 min, high priority, preferred 12:00
-4. Play with feather toy (Kiki) - 20 min, medium priority, preferred 17:00
-Skipped: Brush coat (Mochi) - 40 min did not fit in the remaining time.
+streamlit run app.py   # the web app
+python main.py         # command-line demo
+python -m pytest       # tests
 ```
 
 ## 🛠️ Implementation Summary
 
 The core logic lives in `pawpal_system.py` and is made of four classes:
 
-- **`Task`** (dataclass) is one care activity: title, duration, priority (`high`/`medium`/`low`), an optional preferred time, the name of its pet, and a completed flag.
-- **`Pet`** (dataclass) owns a list of tasks. Adding a task stamps it with the pet's name.
-- **`Owner`** (dataclass) has a name, a daily time budget in minutes, and a list of pets. `get_all_tasks()` flattens every pet's tasks into one list.
-- **`Scheduler`** takes an `Owner` and produces the plan.
+- **`Task`** (dataclass) is one care activity: title, duration, priority (`high`/`medium`/`low`), an optional preferred time, the name of its pet, a completed flag, and optional `recurrence` (`daily`/`weekly`) and `due_date`.
+- **`Pet`** (dataclass) owns a list of tasks. Adding a task stamps it with the pet's name; it can also be renamed, and completing a recurring task adds the next occurrence.
+- **`Owner`** (dataclass) has a name, a daily time budget in minutes, and a list of pets. `get_all_tasks()` flattens every pet's tasks into one list, and `save()`/`load()` persist everything as JSON.
+- **`Scheduler`** takes an `Owner` and produces the plan, plus sorting, filtering and conflict detection.
 
-How they work together: an `Owner` holds `Pet`s, and each `Pet` holds `Task`s. When `Scheduler.generate_daily_plan()` runs, it collects the owner's pending tasks, sorts them by priority (ties go to the earlier preferred time, then the shorter task), and keeps tasks in that order while they fit in the owner's available minutes. A task that doesn't fit is skipped so smaller ones can still be scheduled. The result is stored in `scheduler.plan`, and `explain_plan()` turns it into text that lists each scheduled task and each skipped one.
+How they work together: an `Owner` holds `Pet`s, and each `Pet` holds `Task`s. When `Scheduler.generate_daily_plan()` runs, it collects the owner's pending tasks that are due, sorts them by priority (ties go to the earlier preferred time, then the shorter task), and keeps tasks in that order while they fit in the owner's available minutes. A task that doesn't fit is skipped so smaller ones can still be scheduled. The result is stored in `scheduler.plan`, `detect_conflicts()` checks it for overlapping times, and `explain_plan()` turns it into text that lists each scheduled task and each skipped one.
+
+### Final UML
+
+![PawPal+ final UML class diagram](diagrams/uml_final.png)
+
+Source: [`diagrams/uml_final.mmd`](diagrams/uml_final.mmd)
 
 `main.py` is a command-line demo of this flow, and `tests/test_pawpal.py` holds the tests (run with `python -m pytest`).
 
@@ -182,12 +142,77 @@ new task back but it is not added to a pet.
 
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+### Main UI features
+The Streamlit app (`streamlit run app.py`) lets you:
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+- **Owner:** set your name and the minutes you have available today.
+- **Pets:** add a pet (name and species), rename it, or remove it. Duplicate names are rejected.
+- **Tasks:** add a task with a title, duration, priority, optional preferred time (`HH:MM`) and repeat setting (none, daily or weekly). The task list can be filtered by pet and status and sorted by entered order or preferred time. Each row has **Done** and **Remove** buttons.
+- **Today's Schedule:** click **Generate schedule** to see the plan, summary metrics, warnings and an explanation of the choices.
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+### Example workflow
+1. Set the owner name to Jordan and available time to 90 minutes.
+2. Add a pet, for example Mochi (dog), then another, Kiki (cat).
+3. Add tasks such as "Morning walk" (30 min, high, 07:30, daily) for Mochi and "Breakfast" (10 min, high, 07:45) for Kiki.
+4. Use "Sort by: Preferred time" and the pet and status filters to review the list. A warning appears right away if two pending tasks overlap.
+5. Click **Done** on a daily task. It is marked complete and the next occurrence is added, due tomorrow.
+6. Click **Generate schedule** to view today's plan, with minutes used, any conflict warnings and any skipped tasks.
+
+### Scheduler behaviors shown
+- **Sorting:** the plan is ordered by priority, and the time-sorted view shows the same tasks in clock order.
+- **Conflict warnings:** overlapping preferred times are flagged with the tasks and pets involved, as `st.warning` messages in the UI.
+- **Time budget:** tasks that don't fit are listed as skipped instead of being silently dropped.
+- **Recurrence:** completing a daily or weekly task creates its next occurrence.
+
+### Sample CLI output
+Output of `python main.py`:
+
+```text
+Entered order:
+  18:00 Brush coat (Mochi)
+  07:30 Morning walk (Mochi)
+  --    Evening stroll (Mochi)
+  17:00 Grooming appointment (Mochi)
+  17:00 Play with feather toy (Kiki)
+  12:00 Give medication (Kiki)
+  07:45 Breakfast (Kiki)
+Sorted by time:
+  07:30 Morning walk (Mochi)
+  07:45 Breakfast (Kiki)
+  12:00 Give medication (Kiki)
+  17:00 Grooming appointment (Mochi)
+  17:00 Play with feather toy (Kiki)
+  18:00 Brush coat (Mochi)
+  --    Evening stroll (Mochi)
+
+Completed 'Give medication'; next due 2026-10-21
+Kiki pending: ['Play with feather toy', 'Breakfast', 'Give medication']
+Completed: ['Give medication']
+
+WARNING: Conflict (Mochi and Kiki): 'Morning walk' at 07:30 (30 min) overlaps 'Breakfast' at 07:45.
+WARNING: Conflict (Mochi and Kiki): 'Grooming appointment' at 17:00 (10 min) overlaps 'Play with feather toy' at 17:00.
+================================================================
+                   TODAY'S SCHEDULE - Jordan                    
+================================================================
+Pets: Mochi (dog), Kiki (cat)
+Time available: 90 min
+----------------------------------------------------------------
+#  Preferred  Task                    Pet      Min  Priority
+----------------------------------------------------------------
+1  07:30      Morning walk            Mochi     30  high
+2  07:45      Breakfast               Kiki      10  high
+3  17:00      Grooming appointment    Mochi     10  high
+4  17:00      Play with feather toy   Kiki      20  medium
+5  --         Evening stroll          Mochi     15  medium
+----------------------------------------------------------------
+Total: 85 of 90 min scheduled
+
+Why this plan:
+Jordan has 90 minutes today; the plan uses 85.
+1. Morning walk (Mochi) - 30 min, high priority, preferred 07:30
+2. Breakfast (Kiki) - 10 min, high priority, preferred 07:45
+3. Grooming appointment (Mochi) - 10 min, high priority, preferred 17:00
+4. Play with feather toy (Kiki) - 20 min, medium priority, preferred 17:00
+5. Evening stroll (Mochi) - 15 min, medium priority
+Skipped: Brush coat (Mochi) - 40 min did not fit in the remaining time.
+```

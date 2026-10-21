@@ -159,6 +159,24 @@ if owner.pets:
         if sort_choice == "Preferred time":
             shown = view.sort_by_time(shown)
 
+        pending_shown = [t for t in shown if not t.completed]
+        st.caption(
+            f"Showing {len(shown)} task(s), {len(pending_shown)} pending, "
+            f"{sum(t.duration_minutes for t in pending_shown)} min total."
+        )
+        # Warn right away if the pending tasks on screen overlap in time.
+        conflicts = view.detect_conflicts(pending_shown)
+        if conflicts:
+            st.warning(
+                f"{len(conflicts)} scheduling conflict(s) found. "
+                "Consider changing a preferred time:\n\n"
+                + "\n".join(f"- {c}" for c in conflicts)
+            )
+        elif pending_shown:
+            st.success("No time conflicts among the pending tasks shown.")
+        if not shown:
+            st.info("No tasks match these filters.")
+
         widths = [2, 3, 1, 2, 2, 2, 2, 2]
         header = st.columns(widths)
         for col, label in zip(
@@ -206,25 +224,54 @@ if st.session_state.show_plan:
         scheduler = Scheduler(owner)
         plan = scheduler.generate_daily_plan()
         used = sum(t.duration_minutes for t in plan)
+        scheduled_ids = {id(t) for t in plan}
+        skipped = [t for t in scheduler._due_pending() if id(t) not in scheduled_ids]
+
+        def rows(tasks):
+            return [
+                {
+                    "Preferred": t.preferred_time or "--",
+                    "Task": t.title,
+                    "Pet": t.pet_name,
+                    "Minutes": t.duration_minutes,
+                    "Priority": t.priority.capitalize(),
+                }
+                for t in tasks
+            ]
+
         if plan:
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Tasks scheduled", len(plan))
+            m2.metric("Minutes used", f"{used} / {owner.available_minutes}")
+            m3.metric("Skipped", len(skipped))
+
+            st.markdown("**Plan by priority**")
             st.table(
-                [
-                    {
-                        "#": i,
-                        "Preferred": t.preferred_time or "--",
-                        "Task": t.title,
-                        "Pet": t.pet_name,
-                        "Minutes": t.duration_minutes,
-                        "Priority": t.priority,
-                    }
-                    for i, t in enumerate(plan, 1)
-                ]
+                [{"#": i, **r} for i, r in enumerate(rows(plan), 1)]
             )
-            for warning in scheduler.detect_conflicts():
+            if any(t.preferred_time for t in plan):
+                st.markdown("**Same plan by preferred time**")
+                st.table(rows(scheduler.sort_by_time(plan)))
+
+            conflicts = scheduler.detect_conflicts()
+            for warning in conflicts:
                 st.warning(warning)
-            st.success(f"{used} of {owner.available_minutes} minutes scheduled.")
+            if not conflicts:
+                st.success("No time conflicts in today's plan.")
+            if skipped:
+                st.warning(
+                    f"{len(skipped)} task(s) did not fit in the time available: "
+                    + ", ".join(f"{t.title} ({t.pet_name})" for t in skipped)
+                )
+            else:
+                st.success(
+                    f"All due tasks fit: {used} of {owner.available_minutes} "
+                    "minutes scheduled."
+                )
         else:
             st.warning("No task fits in the time available.")
+            if skipped:
+                st.table(rows(skipped))
         with st.expander("Why this plan?", expanded=True):
             st.text(scheduler.explain_plan())
 
