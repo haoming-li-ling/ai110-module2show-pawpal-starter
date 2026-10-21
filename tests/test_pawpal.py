@@ -151,3 +151,130 @@ def test_detect_conflicts_ignores_malformed_time():
     pet.add_task(Task("Feed", 10, "low", preferred_time="09:00"))
 
     assert Scheduler(owner).detect_conflicts(owner.get_all_tasks()) == []
+
+
+# --- Core behaviors: sorting, recurrence, conflicts, planning ---
+
+
+def test_sort_by_time_is_chronological_for_unsorted_input():
+    tasks = [
+        Task("Evening", 10, "low", preferred_time="18:30"),
+        Task("Noon", 10, "low", preferred_time="12:00"),
+        Task("Early", 10, "low", preferred_time="06:05"),
+        Task("Anytime", 10, "low"),
+    ]
+    ordered = Scheduler(Owner("Sam", 60)).sort_by_time(tasks)
+    assert [t.title for t in ordered] == ["Early", "Noon", "Evening", "Anytime"]
+
+
+def test_sort_by_time_does_not_mutate_input():
+    tasks = [
+        Task("B", 10, "low", preferred_time="10:00"),
+        Task("A", 10, "low", preferred_time="08:00"),
+    ]
+    Scheduler(Owner("Sam", 60)).sort_by_time(tasks)
+    assert [t.title for t in tasks] == ["B", "A"]
+
+
+def test_sort_by_priority_orders_high_to_low_then_time():
+    tasks = [
+        Task("Low", 10, "low", preferred_time="07:00"),
+        Task("HighLate", 10, "high", preferred_time="10:00"),
+        Task("HighEarly", 10, "high", preferred_time="08:00"),
+        Task("Med", 10, "medium"),
+    ]
+    ordered = Scheduler(Owner("Sam", 60)).sort_by_priority(tasks)
+    assert [t.title for t in ordered] == ["HighEarly", "HighLate", "Med", "Low"]
+
+
+def test_daily_recurrence_crosses_month_boundary():
+    task = Task("Meds", 5, "high", recurrence="daily", due_date="2026-01-31")
+    assert task.mark_complete().due_date == "2026-02-01"
+
+
+def test_daily_recurrence_without_due_date_uses_today():
+    from datetime import date, timedelta
+
+    nxt = Task("Meds", 5, "high", recurrence="daily").mark_complete()
+    assert nxt.due_date == (date.today() + timedelta(days=1)).isoformat()
+
+
+def test_recurring_copy_keeps_details_and_is_pending():
+    pet = Pet("Mochi", "dog")
+    task = Task("Meds", 5, "high", "08:00", recurrence="daily", due_date="2026-01-01")
+    pet.add_task(task)
+    nxt = pet.complete_task(task)
+    assert nxt is not task
+    assert (nxt.title, nxt.duration_minutes, nxt.priority) == ("Meds", 5, "high")
+    assert (nxt.preferred_time, nxt.pet_name, nxt.recurrence) == ("08:00", "Mochi", "daily")
+    assert nxt.completed is False
+
+
+def test_detect_conflicts_flags_duplicate_times():
+    owner = Owner("Sam", 120)
+    pet = Pet("Mochi", "dog")
+    owner.add_pet(pet)
+    pet.add_task(Task("Walk", 30, "high", preferred_time="09:00"))
+    pet.add_task(Task("Groom", 20, "low", preferred_time="09:00"))
+
+    warnings = Scheduler(owner).detect_conflicts(owner.get_all_tasks())
+
+    assert len(warnings) == 1
+    assert "Walk" in warnings[0] and "Groom" in warnings[0]
+    assert "09:00" in warnings[0]
+
+
+def test_detect_conflicts_flags_duplicate_times_across_pets():
+    owner = Owner("Sam", 120)
+    a, b = Pet("Mochi", "dog"), Pet("Luna", "cat")
+    owner.add_pet(a)
+    owner.add_pet(b)
+    a.add_task(Task("Walk", 30, "high", preferred_time="09:00"))
+    b.add_task(Task("Feed", 10, "high", preferred_time="09:00"))
+
+    warnings = Scheduler(owner).detect_conflicts(owner.get_all_tasks())
+
+    assert len(warnings) == 1
+    assert "Mochi" in warnings[0] and "Luna" in warnings[0]
+
+
+def test_detect_conflicts_back_to_back_is_not_a_conflict():
+    owner = Owner("Sam", 120)
+    pet = Pet("Mochi", "dog")
+    owner.add_pet(pet)
+    pet.add_task(Task("Walk", 30, "high", preferred_time="09:00"))
+    pet.add_task(Task("Feed", 10, "high", preferred_time="09:30"))
+
+    assert Scheduler(owner).detect_conflicts(owner.get_all_tasks()) == []
+
+
+def test_detect_conflicts_ignores_untimed_tasks_and_empty_input():
+    owner = Owner("Sam", 60)
+    pet = Pet("Mochi", "dog")
+    owner.add_pet(pet)
+    assert Scheduler(owner).detect_conflicts() == []
+    pet.add_task(Task("Walk", 30, "high"))
+    pet.add_task(Task("Feed", 10, "high"))
+    assert Scheduler(owner).detect_conflicts(owner.get_all_tasks()) == []
+
+
+def test_plan_respects_time_budget_and_skips_completed():
+    owner = Owner("Sam", 40)
+    pet = Pet("Mochi", "dog")
+    owner.add_pet(pet)
+    done = Task("Done", 5, "high")
+    pet.add_task(done)
+    done.mark_complete()
+    pet.add_task(Task("Walk", 30, "high"))
+    pet.add_task(Task("Bath", 30, "medium"))
+    pet.add_task(Task("Treat", 10, "low"))
+
+    plan = Scheduler(owner).generate_daily_plan()
+
+    assert [t.title for t in plan] == ["Walk", "Treat"]
+
+
+def test_plan_for_owner_with_no_pets_is_empty():
+    s = Scheduler(Owner("Sam", 60))
+    assert s.generate_daily_plan() == []
+    assert s.explain_plan() == "No tasks scheduled."
