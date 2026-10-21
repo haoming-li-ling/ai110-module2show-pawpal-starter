@@ -1,3 +1,4 @@
+from formatting import priority_badge, schedule_table, status_icon, task_emoji
 from pawpal_system import Owner, Pet, Scheduler, Task
 
 
@@ -23,14 +24,14 @@ def main() -> None:
 
     print("Entered order:")
     for t in owner.get_all_tasks():
-        print(f"  {t.preferred_time or '--':<6}{t.title} ({t.pet_name})")
+        print(f"  {status_icon(t)} {t.preferred_time or '--':<6}{task_emoji(t)} {t.title} ({t.pet_name})")
     print("Sorted by time:")
     for t in scheduler.sort_by_time(owner.get_all_tasks()):
-        print(f"  {t.preferred_time or '--':<6}{t.title} ({t.pet_name})")
+        print(f"  {status_icon(t)} {t.preferred_time or '--':<6}{task_emoji(t)} {t.title} ({t.pet_name})")
 
     print("Sorted by priority, then time:")
     for t in scheduler.sort_by_priority(owner.get_all_tasks()):
-        print(f"  {t.priority:<7}{t.preferred_time or '--':<6}{t.title} ({t.pet_name})")
+        print(f"  {priority_badge(t.priority):<10}{t.preferred_time or '--':<6}{task_emoji(t)} {t.title} ({t.pet_name})")
 
     meds = kiki.tasks[1]
     nxt = scheduler.mark_task_complete(meds)
@@ -41,7 +42,7 @@ def main() -> None:
 
     plan = scheduler.generate_daily_plan()
     for warning in scheduler.detect_conflicts():
-        print("WARNING:", warning)
+        print("⚠️  WARNING:", warning)
 
     width = 64
     print("=" * width)
@@ -50,13 +51,7 @@ def main() -> None:
     print(f"Pets: {', '.join(f'{p.name} ({p.species})' for p in owner.pets)}")
     print(f"Time available: {owner.available_minutes} min")
     print("-" * width)
-    print(f"{'#':<3}{'Preferred':<11}{'Task':<24}{'Pet':<8}{'Min':>4}  Priority")
-    print("-" * width)
-    for i, task in enumerate(plan, 1):
-        print(
-            f"{i:<3}{task.preferred_time or '--':<11}{task.title:<24}"
-            f"{task.pet_name:<8}{task.duration_minutes:>4}  {task.priority}"
-        )
+    print(schedule_table(plan))
     print("-" * width)
     used = sum(t.duration_minutes for t in plan)
     print(f"Total: {used} of {owner.available_minutes} min scheduled")

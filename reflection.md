@@ -96,7 +96,7 @@ To verify the AI's work I did not rely on its description of what the code does:
 - I wrote tests for task completion and for adding a task to a pet, and ran them with `python -m pytest`. Both pass.
 - I checked that the UML, the skeleton and the implementation agree with each other.
 
-At that stage the tests were still thin: they covered simple state changes, not the sorting or time-fitting logic, so the scheduler was only verified by the demo run. I later expanded them to 26 tests covering sorting, recurrence, conflict detection and planning (see section 4).
+At that stage the tests were still thin: they covered simple state changes, not the sorting or time-fitting logic, so the scheduler was only verified by the demo run. I later expanded them (now 37 tests) covering sorting, recurrence, conflict detection and planning (see section 4).
 
 **c. AI strategy**
 
@@ -118,7 +118,7 @@ At that stage the tests were still thin: they covered simple state changes, not 
 
 **a. What you tested**
 
-I wrote 26 tests in `tests/test_pawpal.py`, grouped by behavior:
+I wrote 37 tests in `tests/`, grouped by behavior:
 
 - **Sorting:** `sort_by_time` returns chronological order for unsorted input, puts tasks with no time last, and doesn't mutate its input. `sort_by_priority` orders high to low and breaks ties by time.
 - **Recurrence:** completing a daily or weekly task creates the next occurrence on the right date, including across a month boundary and when the task has no due date. The copy keeps the original's details and starts out pending. Non-recurring tasks create nothing, and completing a task twice doesn't create a duplicate.
@@ -130,7 +130,7 @@ These mattered because the scheduler's rules are easy to get subtly wrong. The m
 
 **b. Confidence**
 
-I am fairly confident, about 4 out of 5. All 26 tests pass and they cover the core rules and their edge cases. I'm not at 5 because the Streamlit UI in `app.py` has no tests, and I only checked it by looking at it.
+I am fairly confident, about 4 out of 5. All 37 tests pass and they cover the core rules and their edge cases. I'm not at 5 because the Streamlit UI in `app.py` has no tests, and I only checked it by looking at it.
 
 With more time I would test these next:
 

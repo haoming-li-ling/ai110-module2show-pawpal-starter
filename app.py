@@ -3,6 +3,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from formatting import priority_badge, status_icon, task_emoji
 from pawpal_system import Owner, Pet, Scheduler, Task
 
 DATA_FILE = Path(__file__).parent / "data.json"
@@ -188,9 +189,10 @@ if owner.pets:
             key = f"{pet.name}_{id(task)}"
             cols = st.columns(widths)
             cols[0].write(pet.name)
-            cols[1].write(("~~" + task.title + "~~") if task.completed else task.title)
+            label = f"{status_icon(task)} {task_emoji(task)} {task.title}"
+            cols[1].write(f"~~{label}~~" if task.completed else label)
             cols[2].write(task.duration_minutes)
-            cols[3].write(task.priority)
+            cols[3].write(priority_badge(task.priority))
             cols[4].write(task.preferred_time or "--")
             cols[5].write(
                 (task.recurrence or "--")
@@ -231,10 +233,10 @@ if st.session_state.show_plan:
             return [
                 {
                     "Preferred": t.preferred_time or "--",
-                    "Task": t.title,
+                    "Task": f"{task_emoji(t)} {t.title}",
                     "Pet": t.pet_name,
                     "Minutes": t.duration_minutes,
-                    "Priority": t.priority.capitalize(),
+                    "Priority": priority_badge(t.priority),
                 }
                 for t in tasks
             ]
