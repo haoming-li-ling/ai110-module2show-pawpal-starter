@@ -341,3 +341,13 @@ def test_load_from_json_rejects_corrupt_file(tmp_path):
         pass
     else:
         raise AssertionError("expected ValueError for corrupt JSON")
+
+
+def test_priority_is_normalized_and_validated():
+    assert Task("Walk", 10, " High ").priority == "high"
+    try:
+        Task("Walk", 10, "hgih")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError for an unknown priority")

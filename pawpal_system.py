@@ -21,6 +21,14 @@ class Task:
     recurrence: str = ""  # "", "daily" or "weekly"
     due_date: str = ""  # ISO date; empty means due today
 
+    def __post_init__(self) -> None:
+        """Normalize priority to lowercase and reject unknown levels."""
+        self.priority = self.priority.strip().lower()
+        if self.priority not in PRIORITY_RANK:
+            raise ValueError(
+                f"priority must be one of {', '.join(PRIORITY_RANK)}, got {self.priority!r}"
+            )
+
     def mark_complete(self) -> Optional["Task"]:
         """Mark this task as done; return the next occurrence if it recurs."""
         if self.completed:

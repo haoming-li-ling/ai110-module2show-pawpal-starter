@@ -129,6 +129,45 @@ PawPal+ remembers your owner, pets and tasks between runs in `data.json` (next t
 | Next available slot | `Scheduler.find_next_available_slot(duration_minutes, earliest, latest)` | Sweeps the timed tasks in order and returns the first `HH:MM` gap that is long enough, or `None` |
 | Recurring tasks | `Task.mark_complete()`, `Pet.complete_task()`, `Scheduler.mark_task_complete()` | Completing a daily or weekly task creates the next occurrence |
 
+### Priority scheduling
+Every `Task` has a `priority` of `high`, `medium` or `low`. It is lowercased and
+validated when the task is created, so a typo such as `"hgih"` raises a
+`ValueError` instead of silently sorting last. `Scheduler.sort_by_priority()`
+orders by priority first, then preferred time, then duration, and
+`generate_daily_plan()` uses that order to fill the owner's time.
+
+Output from `python main.py` (the demo's seven tasks, ordered by priority and
+then by time):
+
+```text
+Sorted by priority, then time:
+  high   07:30 Morning walk (Mochi)
+  high   07:45 Breakfast (Kiki)
+  high   12:00 Give medication (Kiki)
+  high   17:00 Grooming appointment (Mochi)
+  medium 17:00 Play with feather toy (Kiki)
+  medium --    Evening stroll (Mochi)
+  low    18:00 Brush coat (Mochi)
+```
+
+When time is short, priority wins over the clock. Here the owner has 40 minutes
+and four tasks. Sorting by time alone would put the low-priority task first, but
+the plan keeps the two high-priority tasks and skips the rest:
+
+```text
+Time available: 40 min
+By time only:
+  07:00 low    Brush coat (25 min)
+  07:30 medium Evening stroll (20 min)
+  08:00 high   Morning walk (30 min)
+  18:00 high   Give medication (5 min)
+Plan (priority first, then time):
+  high   08:00 Morning walk (30 min)
+  high   18:00 Give medication (5 min)
+Skipped: Brush coat (low, 25 min)
+Skipped: Evening stroll (medium, 20 min)
+```
+
 ### Sorting
 `generate_daily_plan()` sorts pending tasks with `sort_by_priority()`. Use
 `sort_by_time()` for a clock-order view, such as the task list in the app.

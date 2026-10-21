@@ -28,6 +28,10 @@ def main() -> None:
     for t in scheduler.sort_by_time(owner.get_all_tasks()):
         print(f"  {t.preferred_time or '--':<6}{t.title} ({t.pet_name})")
 
+    print("Sorted by priority, then time:")
+    for t in scheduler.sort_by_priority(owner.get_all_tasks()):
+        print(f"  {t.priority:<7}{t.preferred_time or '--':<6}{t.title} ({t.pet_name})")
+
     meds = kiki.tasks[1]
     nxt = scheduler.mark_task_complete(meds)
     print(f"\nCompleted '{meds.title}'; next due {nxt.due_date}")
