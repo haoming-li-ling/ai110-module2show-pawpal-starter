@@ -26,8 +26,8 @@ def test_owner_save_and_load_round_trip(tmp_path):
     pet.add_task(Task("Walk", 30, "high", preferred_time="07:30"))
     path = tmp_path / "data.json"
 
-    owner.save(path)
-    loaded = Owner.load(path)
+    owner.save_to_json(path)
+    loaded = Owner.load_from_json(path)
 
     assert loaded == owner
     assert loaded.pets[0].tasks[0].pet_name == "Mochi"
@@ -316,3 +316,28 @@ def test_next_slot_rejects_bad_input():
     scheduler = _timed_scheduler()
     assert scheduler.find_next_available_slot(0) is None
     assert scheduler.find_next_available_slot(10, earliest="nope") is None
+
+
+def test_save_and_load_keep_recurrence_and_due_date(tmp_path):
+    owner = Owner(name="Jordan", available_minutes=60)
+    pet = Pet(name="Kiki", species="cat")
+    owner.add_pet(pet)
+    pet.add_task(Task("Meds", 5, "high", recurrence="daily", due_date="2030-01-02"))
+    path = tmp_path / "data.json"
+
+    owner.save_to_json(path)
+    loaded = Owner.load_from_json(path)
+
+    task = loaded.pets[0].tasks[0]
+    assert (task.recurrence, task.due_date) == ("daily", "2030-01-02")
+
+
+def test_load_from_json_rejects_corrupt_file(tmp_path):
+    path = tmp_path / "data.json"
+    path.write_text("{not json")
+    try:
+        Owner.load_from_json(path)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError for corrupt JSON")

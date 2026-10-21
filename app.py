@@ -5,7 +5,7 @@ import streamlit as st
 
 from pawpal_system import Owner, Pet, Scheduler, Task
 
-DATA_FILE = Path(__file__).parent / "pawpal_data.json"
+DATA_FILE = Path(__file__).parent / "data.json"
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
@@ -13,7 +13,7 @@ st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 def persist() -> None:
     """Save the owner to disk so data survives page reloads and restarts."""
     try:
-        st.session_state.owner.save(DATA_FILE)
+        st.session_state.owner.save_to_json(DATA_FILE)
     except OSError as e:
         st.warning(f"Could not save your data: {e}")
 
@@ -22,7 +22,7 @@ def load_or_create_owner() -> Owner:
     """Load the saved owner, or start fresh if there is none or it is unreadable."""
     if DATA_FILE.exists():
         try:
-            return Owner.load(DATA_FILE)
+            return Owner.load_from_json(DATA_FILE)
         except (OSError, ValueError, KeyError, TypeError):
             st.session_state.load_error = (
                 f"{DATA_FILE.name} could not be read, so you are starting fresh."

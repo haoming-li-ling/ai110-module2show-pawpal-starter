@@ -12,7 +12,7 @@ PawPal+ is a Streamlit app that helps a busy pet owner plan daily care for their
 - **Daily and weekly recurrence:** completing a recurring task marks it done and creates the next occurrence 1 or 7 days after its due date. Future-dated tasks stay out of today's plan until due, and completing a task twice never creates duplicates.
 - **Next available slot:** `find_next_available_slot()` finds the earliest time of day (07:00 to 21:00 by default) where a task of a given length fits without overlapping the timed tasks in the plan.
 - **Plan explanation:** `explain_plan()` lists every scheduled task and every task that was skipped for lack of time.
-- **Persistence:** the owner, pets and tasks are saved to `pawpal_data.json` and reloaded on startup.
+- **Persistence:** the owner, pets and tasks are saved to `data.json` and reloaded on startup.
 
 ## Getting started
 
@@ -32,7 +32,7 @@ The core logic lives in `pawpal_system.py` and is made of four classes:
 
 - **`Task`** (dataclass) is one care activity: title, duration, priority (`high`/`medium`/`low`), an optional preferred time, the name of its pet, a completed flag, and optional `recurrence` (`daily`/`weekly`) and `due_date`.
 - **`Pet`** (dataclass) owns a list of tasks. Adding a task stamps it with the pet's name; it can also be renamed, and completing a recurring task adds the next occurrence.
-- **`Owner`** (dataclass) has a name, a daily time budget in minutes, and a list of pets. `get_all_tasks()` flattens every pet's tasks into one list, and `save()`/`load()` persist everything as JSON.
+- **`Owner`** (dataclass) has a name, a daily time budget in minutes, and a list of pets. `get_all_tasks()` flattens every pet's tasks into one list, and `save_to_json()`/`load_from_json()` persist everything as JSON.
 - **`Scheduler`** takes an `Owner` and produces the plan, plus sorting, filtering and conflict detection.
 
 How they work together: an `Owner` holds `Pet`s, and each `Pet` holds `Task`s. When `Scheduler.generate_daily_plan()` runs, it collects the owner's pending tasks that are due, sorts them by priority (ties go to the earlier preferred time, then the shorter task), and keeps tasks in that order while they fit in the owner's available minutes. A task that doesn't fit is skipped so smaller ones can still be scheduled. The result is stored in `scheduler.plan`, `detect_conflicts()` checks it for overlapping times, and `explain_plan()` turns it into text that lists each scheduled task and each skipped one.
@@ -102,6 +102,20 @@ tests/test_pawpal.py::test_plan_for_owner_with_no_pets_is_empty PASSED   [100%]
 ```
 
 **Confidence Level: ⭐⭐⭐⭐ (4/5)** — all 26 tests pass and cover the core scheduling behaviors and edge cases. Not 5 because the Streamlit UI (`app.py`) is untested and conflict detection only compares tasks by their preferred times.
+
+## 💾 Data Persistence
+
+PawPal+ remembers your owner, pets and tasks between runs in `data.json` (next to `app.py`, ignored by git).
+
+**Workflow**
+
+1. On startup, `app.py` calls `Owner.load_from_json("data.json")`. If the file is missing, the app starts with a fresh owner. If it can't be read, the app starts fresh and shows a warning.
+2. As you use the app, each change that matters (removing a pet or task, completing a task) calls `persist()`, and `persist()` also runs at the end of every page run, so edits are saved after each interaction.
+3. `persist()` calls `Owner.save_to_json("data.json")`. If the file can't be written, the app shows a warning and keeps running.
+
+**How objects become JSON.** I used custom dictionary conversion instead of a library like marshmallow, because the model is only three small dataclasses. `Task.to_dict()` uses `dataclasses.asdict`, `Pet.to_dict()` and `Owner.to_dict()` nest their children's dicts, and the matching `from_dict()` classmethods rebuild the objects. `Pet.from_dict()` re-adds each task through `add_task()`, so every task's `pet_name` is restored. Recurrence and due dates are plain strings, so they round-trip without special handling. A library would add a dependency and a schema to maintain for no real gain at this size.
+
+**Files modified:** `pawpal_system.py` (renamed `save`/`load` to `save_to_json`/`load_from_json`), `app.py` (uses the new names and `data.json`), `tests/test_pawpal.py` (round-trip tests, including recurrence fields and a corrupt file), `.gitignore` (ignores `data.json`).
 
 ## 📐 Smarter Scheduling
 

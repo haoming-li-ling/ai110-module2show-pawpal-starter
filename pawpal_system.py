@@ -144,13 +144,13 @@ class Owner:
             pets=[Pet.from_dict(p) for p in data.get("pets", [])],
         )
 
-    def save(self, path: Union[str, Path]) -> None:
+    def save_to_json(self, path: Union[str, Path]) -> None:
         """Write this owner (with pets and tasks) to a JSON file."""
         Path(path).write_text(json.dumps(self.to_dict(), indent=2))
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> "Owner":
-        """Read an owner from a JSON file written by save()."""
+    def load_from_json(cls, path: Union[str, Path]) -> "Owner":
+        """Read an owner from a JSON file written by save_to_json()."""
         return cls.from_dict(json.loads(Path(path).read_text()))
 
 
